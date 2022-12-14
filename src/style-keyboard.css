@@ -1,0 +1,16 @@
+svg tspan {
+  font-size: 40px;
+}
+
+textarea,
+textarea:valid {
+  position: absolute;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 40px;
+}
+body,
+#app {
+  height: 100vh;
+}
