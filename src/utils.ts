@@ -1,38 +1,67 @@
 import p5 from "p5";
+import type { OverloadedParams, OverloadedReturnType } from "./overloads";
 
-let moduleP5: p5 | null = null;
+// let moduleP5: p5 | null = null;
 
-function loadP5(): Promise<p5> {
-  return new Promise((r) => {
-    if (!moduleP5) {
-      new p5(function (p: p5) {
-        moduleP5 = p;
-      });
-    }
-    const _p = new Proxy(moduleP5 as p5, {
-      get: function (target, prop) {
-        const r = Reflect.get(target, prop);
-        if (typeof r === "function") {
-          return r.bind(target);
-        }
-        return r;
-      },
-    });
-    r(_p as p5);
-  });
-}
+const p5Switch = document.createElement("button");
 
 type Listeners = {
   [key: string]: (() => void) | ((ev: Event) => void);
 };
+let listeners: Listeners | null = null;
 
-function setEventListeners(listeners: Listeners) {
-  if (!moduleP5) {
-    throw new Error("p5 not loaded");
-  }
-  new p5(function (p: p5) {
-    moduleP5 = Object.assign(p, listeners);
+let p5SwitchPromise = new Promise<p5>((resolve) => {
+  p5Switch.addEventListener("click", () => {
+    new p5(function (p: p5) {
+      resolve(Object.assign(p, listeners));
+    });
   });
+});
+
+type Promised<T extends (...args: any) => any> = (
+  ...args: OverloadedParams<T>
+) => Promise<OverloadedReturnType<T>>;
+
+type DummyP5Property<Prop extends keyof p5> = p5[Prop] extends Function
+  ? Promised<p5[Prop]>
+  : Promise<p5[Prop]>;
+
+type DummyP5 = {
+  [key in keyof p5]: DummyP5Property<key>;
+};
+
+const dummyP5: DummyP5 = new Proxy<DummyP5>(
+  new p5((p) => {
+    p.setup = () => {
+      p.noCanvas();
+    };
+  }) as unknown as DummyP5,
+  {
+    get: function (
+      target,
+      prop: keyof p5
+    ): (() => Promise<any>) | Promise<any> {
+      const dummy = Reflect.get(target, prop);
+      if (typeof dummy === "function") {
+        return async function () {
+          const p = await p5SwitchPromise;
+          const r = Reflect.get(p, prop);
+          return r.apply(p, arguments as any);
+        };
+      }
+      return p5SwitchPromise.then((p) => {
+        return Reflect.get(p, prop);
+      });
+    },
+  }
+);
+
+function loadP5() {
+  return dummyP5;
+}
+
+function setEventListeners(l: Listeners) {
+  listeners = l;
 }
 
 function getCanvas(p5Image: unknown) {
@@ -49,4 +78,14 @@ function createAppEntry(text: string, callback: (ev: MouseEvent) => void) {
   document.body.appendChild(div);
 }
 
-export { loadP5, setEventListeners, getCanvas, createAppEntry };
+function startP5() {
+  p5Switch.click();
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+export { loadP5, setEventListeners, getCanvas, createAppEntry, startP5, sleep };

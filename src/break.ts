@@ -1,4 +1,4 @@
-import { loadP5, setEventListeners } from "./utils";
+import { loadP5, setEventListeners, startP5 } from "./utils";
 import p5 from "p5";
 
 export async function startApp() {
@@ -14,25 +14,31 @@ export async function startApp() {
     windowHeight,
     windowWidth,
     loadImage,
-  } = await loadP5();
+  } = loadP5();
 
   const params = {
-    worldWidth: windowWidth,
+    worldWidth:  windowWidth,
     worldHeight: windowHeight,
   };
 
-  function setup() {
-    createCanvas(params.worldWidth, params.worldHeight);
+  async function setup() {
+    createCanvas(await params.worldWidth, await params.worldHeight);
     background(255);
   }
 
   class World {
     constructor() {
-      this.width = params.worldWidth;
-      this.height = params.worldHeight;
+      this.width = 0;
+      this.height = 0;
+      this.setup()
     }
     width: number;
     height: number;
+
+    async setup() {
+      this.width = await params.worldWidth;
+      this.height = await params.worldHeight;
+    }
 
     getNextPosition(x: number, y: number, move: Move) {
       const temp = [x + move.vector[0], y + move.vector[1]];
@@ -55,7 +61,7 @@ export async function startApp() {
   const world = new World();
 
   class Char {
-    protected _glyph: p5.Graphics;
+    protected _glyph: p5.Graphics | null = null;
     constructor(
       public x: number,
       public y: number,
@@ -64,15 +70,17 @@ export async function startApp() {
       public move: Move,
       public strokes: Stroke[]
     ) {
-      this._glyph = createGraphics(size, size);
-      for (const stroke of strokes) {
-        this._glyph.scale(size / stroke.size);
-        this._glyph.image(stroke.glyph, 0, 0);
-      }
+      createGraphics(size, size).then((graphic) => {
+        this._glyph = graphic;
+        for (const stroke of strokes) {
+          this._glyph.scale(size / stroke.size);
+          this._glyph.image(stroke.glyph!, 0, 0);
+        }
+      });
     }
 
     get glyph() {
-      return this._glyph.get();
+      return this._glyph?.get();
     }
 
     next() {
@@ -86,24 +94,26 @@ export async function startApp() {
       );
     }
 
-    scale(s: number) {
+    async scale(s: number) {
       this.size *= s;
-      this._glyph = createGraphics(this.size, this.size);
+      this._glyph = await createGraphics(this.size, this.size);
       this._glyph.scale(s);
       for (const stroke of this.strokes) {
-        this._glyph.image(stroke.glyph, 0, 0);
+        this._glyph.image(stroke.glyph!, 0, 0);
       }
     }
   }
 
   class Stroke {
-    private _glyph: p5.Graphics;
+    private _glyph: p5.Graphics | null = null;
     // todo: あとでsizeをwidthとheightに分ける
     public size: number;
     constructor(public img: p5.Graphics | p5.Image) {
       this.size = Math.min(img.width, img.height);
-      this._glyph = createGraphics(this.size, this.size);
-      this._glyph.image(img, 0, 0);
+      createGraphics(this.size, this.size).then((graphic) => {
+        this._glyph = graphic;
+        this._glyph.image(img, 0, 0);
+      });
     }
 
     static load(href: string): Promise<Stroke> {
@@ -114,7 +124,7 @@ export async function startApp() {
       });
     }
     get glyph() {
-      return this._glyph.get();
+      return this._glyph?.get();
     }
   }
 
@@ -122,7 +132,7 @@ export async function startApp() {
     push();
     translate(char.x + char.size / 2, char.y + char.size / 2);
     rotate(char.rotation);
-    image(char.glyph, -char.size / 2, -char.size / 2);
+    image(char.glyph as p5.Image, -char.size / 2, -char.size / 2);
     pop();
   }
 
@@ -229,4 +239,6 @@ export async function startApp() {
     });
   }
   testChar();
+  startP5();
+
 }

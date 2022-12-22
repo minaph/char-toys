@@ -6,6 +6,7 @@ import { startApp as startKB } from "./keyboard";
 import { startApp as startChaos } from "./chaos";
 import { createAppEntry } from "./utils";
 import { startApp as startBreakChars } from "./break";
+import { startApp as startBreakCharsML } from "./break-ml";
 
 createAppEntry("Keyboard", (ev) => {
   ev.preventDefault();
@@ -18,4 +19,9 @@ createAppEntry("Chaos", (ev) => {
 createAppEntry("Break", (ev) => {
   ev.preventDefault();
   startBreakChars();
+});
+
+createAppEntry("Break ML", (ev) => {
+  ev.preventDefault();
+  startBreakCharsML();
 });
