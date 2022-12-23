@@ -1,4 +1,9 @@
-import { loadP5, setEventListeners, sleep, startP5 } from "./utils";
+import {
+  loadP5,
+  setEventListeners,
+  setImageFromBinary,
+  startP5,
+} from "./utils";
 import p5 from "p5";
 
 function preload() {
@@ -47,7 +52,6 @@ function addNumberInput() {
   document.body.appendChild(numberInput);
   document.body.appendChild(numberButton);
 }
-
 
 const {
   noCanvas,
@@ -132,8 +136,8 @@ async function breakDown() {
 
 async function randomBreakDown() {
   const lines: (p5.Element | p5.Graphics)[][] = [];
-  const count = Number.parseInt(numberInput.value)
-  const responses = await randomImageStrokes(count) as MLBreakDown[];
+  const count = Number.parseInt(numberInput.value);
+  const responses = (await randomImageStrokes(count)) as MLBreakDown[];
 
   for (const res of responses) {
     const boxes = await visualize(Promise.resolve(res));
@@ -144,7 +148,6 @@ async function randomBreakDown() {
   }
 }
 
-// async function showStrokes(line: [p5.Element, Promise<p5.Graphics[]>]) {
 async function showStrokes(line: (p5.Element | p5.Graphics)[]) {
   const div = document.createElement("div");
   div.style.display = "flex";
@@ -152,7 +155,7 @@ async function showStrokes(line: (p5.Element | p5.Graphics)[]) {
   div.style.justifyContent = "left";
   div.style.width = "100%";
 
-  for (const child of line){
+  for (const child of line) {
     child.parent(div);
   }
   document.body.appendChild(div);
@@ -173,18 +176,21 @@ async function visualize(response: Promise<MLBreakDown>) {
   const { pred_masks, image_size } = res;
   const result = [];
 
-  if ("source" in res){
+  if ("source" in res) {
     const source = await createGraphics(image_size[0], image_size[1]);
+
+    // about 2 ~ 5ms
     source.loadPixels();
     for (let i = 0; i < source.width; i++) {
       for (let j = 0; j < source.height; j++) {
         const value = 255 - res.source![j][i] * 255;
         if (value < 255) {
-          source.set(i, j, [...Array(3).fill(value), 255]);
+          source.set(i, j, [value, value, value, 255]);
         }
       }
     }
     source.updatePixels();
+
     source.show();
     result.push(source);
     source.style("display", "inline");
@@ -214,7 +220,7 @@ async function visualize(response: Promise<MLBreakDown>) {
   return result;
 }
 
-async function randomImageStrokes(count: number){
+async function randomImageStrokes(count: number) {
   const data = new FormData();
   data.append("count", count.toString());
   // data.append("field2", "value2");
@@ -289,7 +295,9 @@ async function drawText(text: string) {
   canvas.parent(main!);
 }
 
-export function startApp() {
+function startApp() {
   setEventListeners({ setup, preload });
   startP5();
 }
+
+export { startApp, randomImageStrokes };

@@ -8,6 +8,10 @@ import { createAppEntry } from "./utils";
 import { startApp as startBreakChars } from "./break";
 import { startApp as startBreakCharsML } from "./break-ml";
 
+import { addSaveGifInput } from "./saveGif";
+
+addSaveGifInput();
+
 createAppEntry("Keyboard", (ev) => {
   ev.preventDefault();
   startKB();
@@ -21,7 +25,7 @@ createAppEntry("Break", (ev) => {
   startBreakChars();
 });
 
-createAppEntry("Break ML", (ev) => {
+createAppEntry("Break ML (localhost only!)", (ev) => {
   ev.preventDefault();
   startBreakCharsML();
 });

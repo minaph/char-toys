@@ -45,8 +45,10 @@ const dummyP5: DummyP5 = new Proxy<DummyP5>(
       if (typeof dummy === "function") {
         return async function () {
           const p = await p5SwitchPromise;
-          const r = Reflect.get(p, prop);
-          return r.apply(p, arguments as any);
+          const f: Function = Reflect.get(p, prop);
+          // return r.apply(p, arguments as any);
+          // console.log({ arguments });
+          return Reflect.apply(f, p, arguments);
         };
       }
       return p5SwitchPromise.then((p) => {
@@ -88,4 +90,20 @@ function sleep(ms: number) {
   });
 }
 
-export { loadP5, setEventListeners, getCanvas, createAppEntry, startP5, sleep };
+function setImageFromBinary(target: p5.Graphics, buffer: number[][]) {
+  const array = Uint8ClampedArray.from(buffer.flat());
+  const img = new ImageData(array, target.width, target.height);
+  const canvas = getCanvas(target);
+  const ctx = canvas.getContext("2d");
+  ctx?.putImageData(img, 0, 0);
+}
+
+export {
+  loadP5,
+  setEventListeners,
+  getCanvas,
+  createAppEntry,
+  startP5,
+  sleep,
+  setImageFromBinary,
+};
