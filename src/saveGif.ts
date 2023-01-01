@@ -1,5 +1,5 @@
-import p5 from "p5";
-import { loadP5, startP5, setEventListeners } from "./utils";
+// import p5 from "p5";
+import { loadP5, setEventListeners } from "./utils";
 
 const {
   // @ts-ignore
