@@ -25,6 +25,13 @@ class BBox {
   //   const [w, h] = [this.width + bbox.width, this.height + bbox.height];
   //   return Math.abs(rx) < w && Math.abs(ry) < h;
   // }
+
+  scale(factor: number) {
+    this.width *= factor;
+    this.height *= factor;
+    this.x *= factor;
+    this.y *= factor;
+  }
 }
 
 export { BBox };
