@@ -1,7 +1,6 @@
 import {
   loadP5,
   setEventListeners,
-  setImageFromBinary,
   startP5,
 } from "./utils";
 import p5 from "p5";
