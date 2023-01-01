@@ -3,7 +3,7 @@ import { select } from "d3";
 export function startApp() {
   function getUnicodeRanges() {
     const pattern = /U\+([0-9A-Z]+)(?:-([0-9A-Z]+))?/g;
-    const targetRules = document.styleSheets[1].cssRules;
+    const targetRules = document.styleSheets[2].cssRules;
 
     const rangeMap = new Map<string, Set<number>>();
     for (const rule of [...targetRules]) {
