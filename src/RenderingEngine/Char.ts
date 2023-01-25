@@ -13,9 +13,10 @@ export class Char extends CharPart {
     public strokes: Stroke[]
   ) {
     super(imgId, _width, _height, _physics);
+
   }
 
-  toString(): string {
-    return `Char: ${this.imgId}_${this.width}_${this.height}`;
-  }
+  // toString(): string {
+  //   return `Char: ${this.imgId}`;
+  // }
 }

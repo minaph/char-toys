@@ -1,8 +1,4 @@
-import {
-  loadP5,
-  setEventListeners,
-  startP5,
-} from "./utils";
+import { loadP5, setEventListeners, startP5 } from "./utils";
 import p5 from "p5";
 
 function preload() {
@@ -124,7 +120,7 @@ async function breakDown() {
     const canvas = child.elt;
     const data = canvas.toDataURL("image/png");
     const res = fetchStrokes(encodeURIComponent(data));
-    const boxes = await visualize(res);
+    const boxes = await visualize(await res);
     lines.push([child, ...boxes]);
     child.remove();
   }
@@ -139,7 +135,7 @@ async function randomBreakDown() {
   const responses = (await randomImageStrokes(count)) as MLBreakDown[];
 
   for (const res of responses) {
-    const boxes = await visualize(Promise.resolve(res));
+    const boxes = await visualize(res);
     lines.push(boxes);
   }
   for (const line of lines) {
@@ -169,8 +165,7 @@ type MLBreakDown = {
   scores: number[];
 };
 
-async function visualize(response: Promise<MLBreakDown>) {
-  const res = await response;
+async function visualize(res: MLBreakDown, display = "inline", alpha = false) {
   console.log({ res });
   const { pred_masks, image_size } = res;
   const result = [];
@@ -190,12 +185,14 @@ async function visualize(response: Promise<MLBreakDown>) {
     }
     source.updatePixels();
 
-    source.show();
     result.push(source);
-    source.style("display", "inline");
+
+    source.show();
+    source.style("display", display);
   }
   const allLayers = await createGraphics(image_size[0], image_size[1]);
-  allLayers.style("display", "inline");
+  allLayers.style("display", display);
+
   result.push(allLayers);
   allLayers.loadPixels();
 
@@ -205,21 +202,30 @@ async function visualize(response: Promise<MLBreakDown>) {
     for (let i = 0; i < g.width; i++) {
       for (let j = 0; j < g.height; j++) {
         const value = 255 - mask[j][i] * 255;
-        g.set(i, j, [...Array(3).fill(value), 255]);
+        if (alpha) {
+          if (value < 129) {
+            g.set(i, j, [...Array(3).fill(value), 255]);
+          } else {
+            g.set(i, j, [...Array(3).fill(value), 0]);
+          }
+        } else {
+          g.set(i, j, [...Array(3).fill(value), 255]);
+        }
         if (value < 255) {
           allLayers.set(i, j, [...Array(3).fill(value), 255]);
         }
       }
     }
-    result.push(g);
     g.updatePixels();
-    g.style("display", "inline");
+
+    result.push(g);
+    g.style("display", display);
   }
   allLayers.updatePixels();
   return result;
 }
 
-async function randomImageStrokes(count: number) {
+async function randomImageStrokes(count: number): Promise<MLBreakDown[]> {
   const data = new FormData();
   data.append("count", count.toString());
   // data.append("field2", "value2");
@@ -299,4 +305,4 @@ function startApp() {
   startP5();
 }
 
-export { startApp, randomImageStrokes };
+export { startApp, randomImageStrokes, visualize };

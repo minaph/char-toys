@@ -23,6 +23,8 @@ type RandomScaleOfSize = {
 
 type RandomScale = RandomScalesOfPhysicalState & RandomScaleOfSize;
 
+export type { RandomScale };
+
 class Engine {
   world: World;
   renderer: Renderer;
@@ -63,9 +65,12 @@ class Engine {
   protected randomSizeScale(scale_: RandomScaleOfSize | number) {
     let scale = scale_;
     if (scale instanceof Object) {
-      scale = scale.scale || 1;
+      scale = scale.scale || 0;
     }
-    return Math.random() * scale;
+    if (scale === 0) {
+      return 1;
+    }
+    return Math.random() * (scale as number);
   }
 
   setRandomCharState(char: Char, scales: RandomScale): Char {
@@ -77,11 +82,12 @@ class Engine {
     const scale = this.randomSizeScale(scales);
     const newChar = this.char(
       char.imgId,
-      scale * char.width,
-      scale * char.height,
+      char.width,
+      char.height,
       physics,
       char.strokes
     );
+    newChar.scale(scale);
 
     if (scales.diff) {
       newChar.diff = physics.diff;
@@ -89,10 +95,15 @@ class Engine {
 
     // strokes update
     for (const stroke of newChar.strokes) {
-      stroke.bbox.scale(scale);
-      this.renderer.registerCharInfo(stroke, scale);
+      // [x] scale logicがおかしい
+      // charがchar自身ではrescaleを計算できない設計なのは果たして
+      // charにscaleFactorをもたせたとしても、
+      // 結局originalSizeを持っていないので、
+      // rescaleを計算するには、originalSizeも持たせる必要がある。
+      stroke.bbox.rescale(scale);
+      this.renderer.registerCharInfo(stroke);
     }
-    this.renderer.registerCharInfo(newChar, scale);
+    this.renderer.registerCharInfo(newChar);
     return newChar;
   }
 
@@ -103,13 +114,14 @@ class Engine {
     physics.data[1] += stroke.physics.data[1];
 
     const scale = this.randomSizeScale(scales);
+    stroke.bbox.rescale(scale);
 
     const newStroke = this.stroke(stroke.imgId, physics, stroke.bbox);
     if (scales.diff) {
       newStroke.diff = physics.diff;
     }
 
-    this.renderer.registerCharInfo(stroke, scale);
+    this.renderer.registerCharInfo(stroke);
     return newStroke;
   }
 
@@ -133,10 +145,7 @@ class Engine {
       const hasEnoughWidth = img.width >= bbox.x + bbox.width;
       const hasEnoughHeight = img.height >= bbox.y + bbox.height;
       // cropの必要性を判定
-      if (
-        !hasEnoughWidth ||
-        !hasEnoughHeight
-      ) {
+      if (!hasEnoughWidth || !hasEnoughHeight) {
         console.error({
           bbox,
           strokeUrl,
@@ -161,8 +170,41 @@ class Engine {
       this.renderer.registerImage(id, img);
     }
 
-    const stroke = this.stroke(id, CharPhysics.None, bbox);
-    this.renderer.registerCharInfo(stroke, 1);
+    const stroke = this.stroke(id, CharPhysics.None(), bbox);
+    this.renderer.registerCharInfo(stroke);
+    return stroke;
+  }
+
+  protected async makeAStrokeFromImage(id: string, img: p5.Image, bbox: BBox) {
+    const isSameWidth = img.width === bbox.width;
+    const isSameHeight = img.height === bbox.height;
+    const hasEnoughWidth = img.width >= bbox.x + bbox.width;
+    const hasEnoughHeight = img.height >= bbox.y + bbox.height;
+    // cropの必要性を判定
+    if (!hasEnoughWidth || !hasEnoughHeight) {
+      console.error({
+        bbox,
+        img,
+        isSameWidth,
+        isSameHeight,
+        hasEnoughWidth,
+        hasEnoughHeight,
+      });
+      throw new Error(`invalid bbox`);
+    } else if (!isSameWidth || !isSameHeight) {
+      console.log(
+        "crop image",
+        id,
+        img.width,
+        img.height,
+        bbox.width,
+        bbox.height
+      );
+      img = img.get(bbox.x, bbox.y, bbox.width, bbox.height);
+    }
+    const stroke = this.stroke(id, CharPhysics.None(), bbox);
+    this.renderer.registerCharInfo(stroke);
+    this.renderer.registerImage(id, img);
     return stroke;
   }
 
@@ -205,15 +247,44 @@ class Engine {
     }
     const strokes: Stroke[] = await Promise.all(promiseList);
 
-    const char = this.char(charId, width, height, CharPhysics.None, strokes);
+    const char = this.char(charId, width, height, CharPhysics.None(), strokes);
     const glyph = await this.renderer.makeGlyphForAChar(char);
     this.renderer.registerImage(charId, glyph.get());
-    this.renderer.registerCharInfo(char, 1);
+    this.renderer.registerCharInfo(char);
+    return char;
+  }
+
+  async loadCharFromImages(
+    charId: string,
+    images: p5.Image[],
+    bboxList: BBox[],
+    width: number,
+    height: number
+  ) {
+    const strokes: Stroke[] = [];
+    for (const [i, image] of images.entries()) {
+      const stroke = await this.makeAStrokeFromImage(
+        `${charId}_${i}`,
+        image,
+        bboxList[i]
+      );
+      strokes.push(stroke);
+    }
+    const char = this.char(charId, width, height, CharPhysics.None(), strokes);
+    const glyph = await this.renderer.makeGlyphForAChar(char);
+    this.renderer.registerImage(charId, glyph.get());
+    this.renderer.registerCharInfo(char);
     return char;
   }
 
   add(image: CharPart) {
+    // if (this.renderer
+    this.renderer.registerCharInfo(image);
     this.images.push(image);
+  }
+
+  delete(image: CharPart) {
+    this.images = this.images.filter((i) => i.toString() !== image.toString());
   }
 
   async draw() {
@@ -225,6 +296,18 @@ class Engine {
       await this.renderer.render(image);
     }
     console.timeEnd("draw");
+  }
+
+  getPointed(x: number, y: number) {
+    const pointed: typeof this.images = [];
+    for (const image of this.images) {
+      // [ ] isInside実装
+      const isPointed = image.isInside(x, y);
+      if (isPointed) {
+        pointed.push(image);
+      }
+    }
+    return pointed;
   }
 }
 

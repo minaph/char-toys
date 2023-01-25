@@ -2,14 +2,17 @@ import p5 from "p5";
 // import { loadP5 } from "../utils";
 
 import { CharPhysics } from "./CharPhysics";
-import { BBox } from "./bbox";
+import { RescalableBBox, BBox } from "./bbox";
 
 // const { loadImage, createGraphics } = loadP5();
 
 export class CharPart extends CharPhysics {
   private _glyph: p5.Image | null = null;
+  public scaleFactor = 1;
+  protected originalWidth: number;
+  protected originalHeight: number;
+  private id: number;
 
-  // [x]: なぜwidth, heightとscaleFactorが両方必要なのか？初期化時はどう設定すべきか？
   // 描画の際はscaleFactorを使うが、物理演算の際はwidth, heightを使う。
   // scaleFactorはCharPartではなく、CharPartの生成を担当するクラスが持つべき
 
@@ -20,6 +23,9 @@ export class CharPart extends CharPhysics {
     private _physics: CharPhysics
   ) {
     super([[_physics.x, _physics.y], _physics.rotation]);
+    this.originalWidth = _width;
+    this.originalHeight = _height;
+    this.id = Math.random();
   }
 
   get width() {
@@ -59,13 +65,30 @@ export class CharPart extends CharPhysics {
   }
 
   toString(): string {
-    return `Stroke: ${this.imgId}_${this.width}_${this.height}`;
+    return `${this.constructor.name}: ${this.imgId}_${this.id}`;
+  }
+
+  scale(factor: number): void {
+    this.scaleFactor = factor;
+    this._width *= factor;
+    this._height *= factor;
+  }
+
+  isInside(x: number, y: number): boolean {
+    return (
+      x >= this.x &&
+      x <= this.x + this.width &&
+      y >= this.y &&
+      y <= this.y + this.height
+    );
   }
 }
 
 export class Stroke extends CharPart {
-  constructor(public imgId: string, physics: CharPhysics, private _bbox: BBox) {
+  private _bbox: RescalableBBox;
+  constructor(public imgId: string, physics: CharPhysics, _bbox: BBox) {
     super(imgId, _bbox.width, _bbox.height, physics);
+    this._bbox = RescalableBBox.fromBBox(_bbox);
   }
 
   get x(): number {
@@ -84,11 +107,24 @@ export class Stroke extends CharPart {
     return this._bbox.height;
   }
 
-  get bbox(): BBox {
+  get bbox(): RescalableBBox {
     return this._bbox;
   }
 
   set bbox(bbox: BBox) {
-    this._bbox = bbox;
+    this._bbox = RescalableBBox.fromBBox(bbox);
+  }
+
+  // toString(): string {
+  //   return `Stroke: ${this.imgId}`;
+  // }
+
+  scale(factor: number): void {
+    super.scale(factor);
+    this._bbox.scale(factor);
+  }
+
+  isInside(x: number, y: number): boolean {
+    return this.bbox.isInside(x, y);
   }
 }

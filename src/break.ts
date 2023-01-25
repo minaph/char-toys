@@ -1,8 +1,9 @@
 import { loadP5, setEventListeners, startP5 } from "./utils";
 // import p5 from "p5";
-import { Engine } from "./RenderingEngine/CharRenderingEngine";
+import { Engine, RandomScale } from "./RenderingEngine/CharRenderingEngine";
 import { BBox } from "./RenderingEngine/bbox";
 import { CharPhysics } from "./RenderingEngine/CharPhysics";
+import { Char } from "./RenderingEngine/Char";
 
 const { windowHeight, windowWidth } = loadP5();
 
@@ -18,10 +19,22 @@ async function setup() {
   const worldHeight = await params.worldHeight;
   engine = new Engine(worldWidth, worldHeight, 20);
 
-  // loadMoritaSingle(engine);
+  loadMoritaSingle(engine);
   // loadMorita(engine);
-  loadMoritaStrokes(engine);
+  // loadMoritaStrokes(engine);
 }
+
+function breakChar(char: Char, engine: Engine, scales: RandomScale) {
+  for (const stroke of char.strokes) {
+    const newStroke = engine.setRandomStrokeState(stroke, scales);
+    newStroke.data[0][0] = char.data[0][0];
+    newStroke.data[0][1] = char.data[0][1];
+    newStroke.scale(char.scaleFactor);
+    engine.add(newStroke);
+  }
+  engine.delete(char);
+}
+
 
 async function loadMoritaStrokes(engine: Engine) {
   const scales = {
@@ -48,6 +61,7 @@ async function loadMoritaStrokes(engine: Engine) {
   ];
   let char_a = await engine.loadCharFromUrls("a", aStrokes, bboxes, 298, 298);
   let dx = 0;
+
   for (let stroke of char_a.strokes) {
     stroke = engine.setRandomStrokeState(stroke, scales);
     stroke.data[0][0] += dx;
@@ -61,8 +75,8 @@ async function loadMoritaStrokes(engine: Engine) {
 
 async function loadMorita(engine: Engine) {
   const scales = {
-    x: 1000,
-    y: 1,
+    x: 10,
+    y: 10,
     rotation: 3.14,
     diff: {
       x: 5,
@@ -113,6 +127,29 @@ async function loadMorita(engine: Engine) {
     engine.add(char_o);
     char_o.data[0][0] += 400;
   }
+
+  function onClick(ev?: MouseEvent) {
+    const { clientX, clientY } = ev!;
+    const pointed = engine!.getPointed(clientX, clientY);
+    console.log(pointed);
+    for (const image of pointed) {
+      if (image instanceof Char) {
+        breakChar(image, engine!, scales);
+      }
+    }
+  }
+
+  // @ts-ignore
+  target.addEventListener("mousedown", onClick);
+}
+
+const target = new EventTarget();
+
+function mousePressed(ev?: MouseEvent) {
+  console.log(ev);
+  target.dispatchEvent(
+    new MouseEvent("mousedown", { clientX: ev!.clientX, clientY: ev!.clientY })
+  );
 }
 
 async function loadMoritaSingle(engine: Engine) {
@@ -123,9 +160,9 @@ async function loadMoritaSingle(engine: Engine) {
     diff: {
       x: 0.5,
       y: 0.5,
-      rotation: 0,
+      rotation: 0.05,
     },
-    scale: 2,
+    scale: 1,
   };
 
   const aStrokes = [
@@ -164,14 +201,32 @@ async function loadMoritaSingle(engine: Engine) {
   engine.add(char_o);
 
   console.table({ char_a, char_o });
+
+  function onClick(ev?: MouseEvent) {
+    const { clientX, clientY } = ev!;
+    const pointed = engine!.getPointed(clientX, clientY);
+    console.log(pointed);
+    for (const image of pointed) {
+      // debugger;
+      if (image instanceof Char) {
+        breakChar(image, engine!, { rotation: 0.2, diff: { x: 3, y: 3, rotation: 0.05 } });
+      }
+    }
+  }
+
+  // @ts-ignore
+  target.addEventListener("mousedown", onClick);
 }
 
 function draw() {
   engine!.draw();
 }
 
-export function startApp() {
+function startApp() {
   // startP5({ setup, draw });
-  setEventListeners({ setup, draw });
+  setEventListeners({ setup, draw, mousePressed });
   startP5();
 }
+
+
+export {startApp, breakChar}

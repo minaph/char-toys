@@ -25,7 +25,9 @@ abstract class Physics<T> {
 }
 
 export class CharPhysics extends Physics<[Vector2D, number]> {
-  static None = new CharPhysics([[0, 0], 0]);
+  static None() {
+    return new CharPhysics([[0, 0], 0]);
+  }
   static random(
     xScale: number,
     yScale: number,

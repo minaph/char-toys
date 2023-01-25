@@ -15,11 +15,14 @@ interface DynamicDrawInfo {
   rotation: number;
 }
 
-interface DrawInfomation extends StaticDrawInfo, DynamicDrawInfo {
+interface DrawInfomation extends DynamicDrawInfo {
   image: p5.Image | p5.Graphics;
+  width: number;
+  height: number;
+  scaleFactor: number;
 }
 
-interface MemorableDrawInfo extends StaticDrawInfo {
+interface MemorableDrawInfo {
   imgId: string;
 }
 
@@ -28,15 +31,12 @@ class CharPartsMemory extends Map<string, MemorableDrawInfo> {
     super();
   }
   // add(partId: string, imgId: string, scaleFactor: number) {
-  add(part: CharPart, scaleFactor: number) {
+  add(part: CharPart) {
     // destructuring assignment
-    const { imgId, width, height } = part;
+    const { imgId } = part;
 
     this.set(part.toString(), {
       imgId,
-      width,
-      height,
-      scaleFactor,
     });
   }
 }
